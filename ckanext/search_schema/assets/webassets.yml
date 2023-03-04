@@ -1,0 +1,14 @@
+# search_schema-js:
+#   filter: rjsmin
+#   output: ckanext-search_schema/%(version)s-search_schema.js
+#   contents:
+#     - js/search_schema.js
+#   extra:
+#     preload:
+#       - base/main
+
+# search_schema-css:
+#   filter: cssrewrite
+#   output: ckanext-search_schema/%(version)s-search_schema.css
+#   contents:
+#     - css/search_schema.css
