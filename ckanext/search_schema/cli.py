@@ -1,11 +1,11 @@
 import json
-from typing import Any
 
 import click
+from pygments import highlight, lexers, formatters
 
 import ckanext.search_schema.types as types
 import ckanext.search_schema.adapters as adapter
-from ckanext.search_schema.adapters import connect, SearchEngineType
+from ckanext.search_schema.adapters import SearchEngineType
 from ckanext.search_schema.exceptions import SolrApiError
 
 
@@ -17,9 +17,11 @@ def search_schema():
 
 @search_schema.command()
 def definition():
-    """Get a full schema definition"""
+    """Get a full search schema definition"""
+
     conn: SearchEngineType = adapter.connect()
-    click.echo(json.dumps(conn.get_full_schema(), indent=4))
+
+    _echo_colorized(json.dumps(conn.get_full_schema(), indent=4))
 
 
 @search_schema.command()
@@ -34,7 +36,7 @@ def field_types(field_type: str):
     except SolrApiError as e:
         return click.secho(e, fg="red")
 
-    click.echo(json.dumps(field_types, indent=4))
+    _echo_colorized(json.dumps(field_types, indent=4))
 
 
 @search_schema.command()
@@ -42,7 +44,18 @@ def field_types(field_type: str):
 def field(field_name: str):
     """Get a specific field definition"""
     conn: SearchEngineType = adapter.connect()
-    click.echo(json.dumps(conn.get_field(field_name), indent=4))
+    _echo_colorized(json.dumps(conn.get_field(field_name), indent=4))
+
+
+def _echo_colorized(json_data: str):
+    """Colorize JSON output with pygments library"""
+    click.echo(
+        highlight(
+            json_data,
+            lexers.JsonLexer(),
+            formatters.TerminalFormatter(),
+        )
+    )
 
 
 def get_commands():
