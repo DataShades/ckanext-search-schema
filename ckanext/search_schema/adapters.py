@@ -160,7 +160,10 @@ class Solr8Adapter(SolrBaseAdapter):
     """An adapter for Solr 8+"""
 
     def get_full_schema(self) -> str:
-        return ""
+        return self._send_request(
+            self._get_url("schema"),
+            params={"wt": "json"},
+        )["schema"]
 
     def get_field_types(
         self, field_type: Optional[str]
