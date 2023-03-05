@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import logging
+import os
+import json
 from abc import ABC, abstractmethod
 from typing import Any, Optional, TypeAlias
 from urllib.parse import urlparse, urlunparse, ParseResult
 
 from requests import request, RequestException, Response
 
+import ckan.plugins as p
 from ckan.plugins import toolkit as tk
 
 import ckanext.search_schema.types as t
+from ckanext.search_schema.interfaces import ISearchSchema
 from ckanext.search_schema import const
 from ckanext.search_schema.exceptions import SolrConfigError, SolrApiError
 
@@ -141,6 +145,9 @@ class Solr5Facade(SolrBaseFacade):
     def clear_schema(self, groups: t.SolrFieldGroups):
         pass
 
+    def create_schema(self):
+        pass
+
 
 class Solr8Facade(SolrBaseFacade):
     def clear_schema(self, groups: t.SolrFieldGroups):
@@ -173,6 +180,33 @@ class Solr8Facade(SolrBaseFacade):
 
         log.info(f"Solr schema API. Schema has been cleared")
 
+    def create_schema(self):
+        self.clear_schema(const.SOLR_FIELD_GROUPS)
+        definitions: t.SolrSchemaDefinition = self._get_default_definitions()
+
+        for plugin in p.PluginImplementations(ISearchSchema):
+            plugin.update_search_schema_definitions(definitions)
+
+        data: dict[str, list[dict[str, str]]] = {}
+
+        for group in reversed(const.SOLR_FIELD_GROUPS):
+            data[f"add-{group}"] = definitions[group]
+
+        self._send_request(self._get_url("schema"), data=data, method="post")
+
+    def _get_default_definitions(self) -> t.SolrSchemaDefinition:
+        here = os.path.dirname(__file__)
+
+        definitions: t.SolrSchemaDefinition = {}
+
+        for group in const.SOLR_FIELD_GROUPS:
+            path: str = os.path.join(
+                here, "data/default_schemas/solr8/", group + ".json"
+            )
+            with open(path) as f:
+                definitions[group] = json.load(f)
+
+        return definitions
 
 # class ElasticSearchFacade():
 #     """TODO"""

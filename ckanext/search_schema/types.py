@@ -91,3 +91,15 @@ class SolrDynamicField(SolrField):
 class SolrCopyField(TypedDict):
     source: str
     dest: str
+
+
+SolrSchemaDefinition = TypedDict(
+    "SolrSchemaDefinition",
+    {
+        "copy-field": list[SolrCopyField],
+        "dynamic-field": list[SolrDynamicField],
+        "field": list[SolrField],
+        "field-type": list[SolrFieldType],
+    },
+    total=False
+)

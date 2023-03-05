@@ -17,13 +17,10 @@ def search_schema():
 
 
 @search_schema.command()
-@click.argument(
-    "group", type=click.Choice(const.SOLR_FIELD_GROUPS), required=False
-)
 def create():
     """Populate a schema with required fields."""
     conn: SearchEngineType = facade.connect()
-    conn.create_schema([group] if group else const.SOLR_FIELD_GROUPS)  # type: ignore
+    conn.create_schema()
 
 
 @search_schema.command()
@@ -33,7 +30,7 @@ def create():
 def clear(group: str):
     """Clear a defined schema. Provide a target to clear a specific field group"""
     conn: SearchEngineType = facade.connect()
-    conn.clear_schema([group] if group else const.SOLR_FIELD_GROUPS)  # type: ignore
+    conn.clear_schema([group] if group else const.SOLR_FIELD_GROUPS)
 
 
 @search_schema.command()
