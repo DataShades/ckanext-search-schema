@@ -1,4 +1,4 @@
-class SolrAdapterError(Exception):
+class SolrConfigError(Exception):
     pass
 
 class SolrApiError(Exception):

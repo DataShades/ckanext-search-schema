@@ -1,23 +1,28 @@
 from __future__ import annotations
 
-from typing import TypeAlias, Any, Optional, TypedDict
+from typing import Optional, TypedDict, Literal
 
 
-SolrApiFieldTypes: TypeAlias = list[dict[str, Any]] | dict[str, Any]
+SolrFieldGroups = Literal[
+    "copy-field",
+    "dynamic-field",
+    "field",
+    "field-type",
+]
 
 
-class Solr8Schema(TypedDict):
+class SolrSchema(TypedDict):
     name: str
     version: float | int
     uniqueKey: str
-    fieldTypes: list["Solr8FieldType"]
-    fields: list["Solr8Field"]
-    dynamicFields: list["Solr8DynamicField"]
-    copyFields: list["Solr8CopyField"]
+    fieldTypes: list["SolrFieldType"]
+    fields: list["SolrField"]
+    dynamicFields: list["SolrDynamicField"]
+    copyFields: list["SolrCopyField"]
 
 
-Solr8FieldType = TypedDict(
-    "Solr8FieldType",
+SolrFieldType = TypedDict(
+    "SolrFieldType",
     {
         "name": str,
         "class": str,
@@ -56,7 +61,7 @@ Solr8FieldType = TypedDict(
 )
 
 
-class Solr8Field(TypedDict):
+class SolrField(TypedDict):
     name: str
     type: str
     default: Optional[str]
@@ -79,10 +84,10 @@ class Solr8Field(TypedDict):
     termPayloads: Optional[bool]
 
 
-class Solr8DynamicField(Solr8Field):
+class SolrDynamicField(SolrField):
     pass
 
 
-class Solr8CopyField(TypedDict):
+class SolrCopyField(TypedDict):
     source: str
     dest: str
