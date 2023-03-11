@@ -1,4 +1,6 @@
 import json
+import logging
+from typing import Any
 
 import click
 from pygments import highlight, lexers, formatters
@@ -10,6 +12,9 @@ from ckanext.search_schema.facades import SearchEngineType
 from ckanext.search_schema.exceptions import SolrApiError
 
 
+log = logging.getLogger(__name__)
+
+
 @click.group(short_help="search_schema command line interface")
 def search_schema():
     """search_schema command line interface"""
@@ -17,10 +22,22 @@ def search_schema():
 
 
 @search_schema.command()
-def create():
+@click.option(
+    "-n",
+    "--no-reindex",
+    is_flag=True,
+    help="Skip reindex after creating schema.",
+)
+def create(no_reindex: bool):
     """Populate a schema with required fields."""
     conn: SearchEngineType = facade.connect()
     conn.create_schema()
+
+    if no_reindex:
+        return
+
+    log.info("Schema has been created. Reindexing...")
+    conn.reindex()
 
 
 @search_schema.command()
@@ -31,6 +48,20 @@ def clear(group: str):
     """Clear a defined schema. Provide a target to clear a specific field group"""
     conn: SearchEngineType = facade.connect()
     conn.clear_schema([group] if group else const.SOLR_FIELD_GROUPS)
+
+
+@search_schema.command()
+def check():
+    """Check if a schema contains all the required fields"""
+    conn: SearchEngineType = facade.connect()
+    check_result: dict[str, dict[str, Any]] = conn.check_schema()
+
+    if not check_result:
+        return click.secho("The schema is properly configured.", fg="green")
+
+    _echo_colorized(json.dumps(check_result, indent=4))
+    click.secho("There are some problems in your schema definition.", fg="red")
+    click.secho("Consider running " + click.style("ckan search-schema create", fg="green"))
 
 
 @search_schema.command()

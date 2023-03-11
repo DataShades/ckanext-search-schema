@@ -8,9 +8,11 @@ from typing import Any, Optional, TypeAlias
 from urllib.parse import urlparse, urlunparse, ParseResult
 
 from requests import request, RequestException, Response
+from dictdiffer import diff
 
 import ckan.plugins as p
 from ckan.plugins import toolkit as tk
+from ckan.lib.search import rebuild
 
 import ckanext.search_schema.types as t
 from ckanext.search_schema.interfaces import ISearchSchema
@@ -22,30 +24,6 @@ log = logging.getLogger(__name__)
 
 
 class SolrFacade(ABC):
-    def _send_request(
-        self,
-        url: str,
-        params: Optional[dict[str, Any]] = None,
-        data: Optional[dict[str, Any]] = None,
-        headers: Optional[dict[str, Any]] = None,
-        method: str = "GET",
-    ) -> dict[str, Any]:
-        headers = headers or {}
-        headers["Content-Type"] = "application/json"
-
-        try:
-            response: Response = request(
-                method, url, params=params, json=data, headers=headers
-            )
-            response.raise_for_status()
-        except RequestException as e:
-            raise Exception(f"Error executing request to {url}: {e}")
-        return response.json()
-
-    @abstractmethod
-    def _get_url(self, endpoint: str) -> str:
-        pass
-
     @abstractmethod
     def get_full_schema(self) -> t.SolrSchema:
         pass
@@ -72,6 +50,10 @@ class SolrFacade(ABC):
     def clear_schema(self, groups: t.SolrFieldGroups):
         pass
 
+    @abstractmethod
+    def check_schema(self) -> dict[str, list]:
+        pass
+
 
 class SolrBaseFacade(SolrFacade):
     def __init__(
@@ -84,6 +66,26 @@ class SolrBaseFacade(SolrFacade):
 
         self.base_url: str = base_url or self._get_base_url_from_config()
         self.collection: str = collection or self._get_collection_from_config()
+
+    def _send_request(
+        self,
+        url: str,
+        params: Optional[dict[str, Any]] = None,
+        data: Optional[dict[str, Any]] = None,
+        headers: Optional[dict[str, Any]] = None,
+        method: str = "GET",
+    ) -> dict[str, Any]:
+        headers = headers or {}
+        headers["Content-Type"] = "application/json"
+
+        try:
+            response: Response = request(
+                method, url, params=params, json=data, headers=headers
+            )
+            response.raise_for_status()
+        except RequestException as e:
+            raise Exception(f"Error executing request to {url}: {e}")
+        return response.json()
 
     def _get_base_url_from_config(self) -> str:
         """Parse a base_url from a configured solr_url"""
@@ -140,16 +142,9 @@ class SolrBaseFacade(SolrFacade):
 
         raise SolrApiError(f"{group} `{field_name}` doesn't exist")
 
+    def reindex(self) -> None:
+        rebuild()
 
-class Solr5Facade(SolrBaseFacade):
-    def clear_schema(self, groups: t.SolrFieldGroups):
-        pass
-
-    def create_schema(self):
-        pass
-
-
-class Solr8Facade(SolrBaseFacade):
     def clear_schema(self, groups: t.SolrFieldGroups):
         """Clear a SOLR schema for provided groups"""
         schema: t.SolrSchema = self.get_full_schema()
@@ -208,22 +203,88 @@ class Solr8Facade(SolrBaseFacade):
 
         return definitions
 
+    def check_schema(self) -> dict[str, dict[str, Any]]:
+        self.schema: t.SolrSchema = self.get_full_schema()
+        definitions: t.SolrSchemaDefinition = self._get_default_definitions()
+
+        for plugin in p.PluginImplementations(ISearchSchema):
+            plugin.update_search_schema_definitions(definitions)
+
+        self.missing: dict[str, list[t.SolrField]] = {}
+        self.misconfigured: dict[str, Any] = {}
+
+        for group in const.SOLR_FIELD_GROUPS:
+            self.key: str = const.SOLR_GROUP_MAPPING[group]
+
+            for field in definitions[group]:
+                self._check_field(group, field)
+
+        data = {}
+
+        if self.missing:
+            data["missing"] = self.missing
+
+        if self.misconfigured:
+            data["misconfigured"] = self.misconfigured
+
+        return data
+
+    def _check_field(self, group: str, field: dict[str, Any]):
+        if group == "copy-field":
+            if field not in self.schema[self.key]:
+                self._append(self.missing, group, field)
+            return
+
+        current_field: Optional[t.SolrField] = next(
+            filter(
+                lambda f: f["name"] == field["name"],
+                self.schema[self.key],
+            ),
+            None,
+        )
+
+        if not current_field:
+            return self._append(self.missing, group, field)
+
+        # [('change', 'indexed', ('true', True)), ...]
+        diffs: list[tuple] = list(diff(field, current_field))
+        diffs = [d for d in diffs if not self._check_bool(d[-1])]
+
+        if diffs:
+            self._append(
+                self.misconfigured,
+                group,
+                {
+                    "current_definition": current_field,
+                    "difference": diffs,
+                },
+            )
+
+    def _append(
+        self,
+        container: dict[str, Any],
+        group: str,
+        value: dict[str, Any],
+    ):
+        container.setdefault(group, [])
+        container[group].append(value)
+
+    def _check_bool(self, value_pair: tuple[str, str]) -> bool:
+        return (set(value_pair) == {"true", True}) or (
+            set(value_pair) == {"false", False}
+        )
+
+
+class Solr5Facade(SolrBaseFacade):
+    pass
+
+
+class Solr8Facade(SolrBaseFacade):
+    pass
+
+
 # class ElasticSearchFacade():
 #     """TODO"""
-
-#     def _get_url(self, endpoint: str) -> str:
-#         return ""
-
-#     def get_full_schema(self) -> str:
-#         return ""
-
-#     def get_field_types(
-#         self, field_type: Optional[str]
-#     ) -> list[t.SolrFieldType]:
-#         return {}
-
-#     def get_fields(self, field_name: str) -> dict[str, Any]:
-#         return {}
 
 
 SearchEngineType: TypeAlias = Solr5Facade | Solr8Facade
