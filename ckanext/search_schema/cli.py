@@ -52,7 +52,7 @@ def clear(group: str):
 
 @search_schema.command()
 def check():
-    """Check if a schema contains all the required fields"""
+    """Check if a schema is properly configured"""
     conn: SearchEngineType = facade.connect()
     check_result: dict[str, dict[str, Any]] = conn.check_schema()
 
