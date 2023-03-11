@@ -61,7 +61,10 @@ def check():
 
     _echo_colorized(json.dumps(check_result, indent=4))
     click.secho("There are some problems in your schema definition.", fg="red")
-    click.secho("Consider running " + click.style("ckan search-schema create", fg="green"))
+    click.secho(
+        "Consider running "
+        + click.style("ckan search-schema create", fg="green")
+    )
 
 
 @search_schema.command()
@@ -131,6 +134,12 @@ def copy_fields(field_name: str):
         return click.secho(e, fg="red")
 
     _echo_colorized(json.dumps(fields, indent=4))
+
+
+@search_schema.command()
+def template():
+    """Get a basic search schema template"""
+    click.secho("Not implemented yet.", fg="red")
 
 
 def _echo_colorized(json_data: str):
