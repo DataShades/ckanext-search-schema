@@ -1,4 +1,4 @@
-[![Tests](https://github.com/mutantsan/ckanext-search-schema/workflows/Tests/badge.svg?branch=main)](https://github.com/mutantsan/ckanext-search-schema/actions)
+[![Tests](https://github.com/DataShades/ckanext-search-schema/workflows/Tests/badge.svg?branch=main)](https://github.com/DataShades/ckanext-search-schema/actions)
 
 # ckanext-search-schema
 
@@ -24,7 +24,7 @@ To install ckanext-search-schema:
 
 2. Clone the source and install it on the virtualenv
 
-    git clone https://github.com/mutantsan/ckanext-search-schema.git
+    git clone https://github.com/DataShades/ckanext-search-schema.git
     cd ckanext-search-schema
     pip install -e .
 	pip install -r requirements.txt
@@ -54,7 +54,7 @@ None at present
 To install ckanext-search-schema for development, activate your CKAN virtualenv and
 do:
 
-    git clone https://github.com/mutantsan/ckanext-search-schema.git
+    git clone https://github.com/DataShades/ckanext-search-schema.git
     cd ckanext-search-schema
     python setup.py develop
     pip install -r dev-requirements.txt
